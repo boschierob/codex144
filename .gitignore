@@ -25,3 +25,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+# --- Python Tooling ---
+scripts/.env
+scripts/__pycache__/
+scripts/venv/
+scripts/env/
+*.pyc

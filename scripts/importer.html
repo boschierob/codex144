@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importateur de Fichiers & Dossiers - Laravel</title>
+    <style>
+        :root {
+            --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eeebff;
+            --background: #f8fafc; --surface: #ffffff; --text: #0f172a;
+            --text-secondary: #64748b; --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
+        body {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+
+        .upload-container {
+            background: var(--surface); border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); width: 100%; max-width: 650px; padding: 32px;
+        }
+
+        h1 { color: var(--text); font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; text-align: center; }
+        p.subtitle { color: var(--text-secondary); font-size: 0.95rem; text-align: center; margin-bottom: 24px; }
+
+        .step-view { display: none; }
+        .step-view.active { display: block; }
+
+        .drop-zone {
+            border: 2px dashed #cbd5e1; border-radius: 16px; padding: 40px 20px;
+            text-align: center; background: #fafafa; cursor: pointer; transition: all 0.3s;
+        }
+        .drop-zone:hover, .drop-zone.drag-over { border-color: var(--primary); background: var(--primary-light); }
+        .drop-zone .icon { font-size: 48px; color: var(--primary); margin-bottom: 16px; }
+
+        .btn-group { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+        .btn { background-color: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 10px 16px; border-radius: 8px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        .config-section { margin-top: 20px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
+        .input-path-wrapper { display: flex; align-items: center; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; }
+        .input-path { border: none; outline: none; padding: 10px 0; width: 100%; font-size: 0.9rem; }
+
+        .file-list-container { margin-top: 20px; max-height: 200px; overflow-y: auto; }
+        .file-item { background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 6px; font-size: 0.85rem; list-style: none; }
+
+        .tree-container { background: #1e293b; color: #f8fafc; padding: 20px; border-radius: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; text-align: left; margin: 20px 0; }
+        .tree-container ul { list-style: none; padding-left: 0; }
+        .tree-container li { margin-bottom: 5px; color: #38bdf8; }
+
+        /* Style de la notification NPM */
+        .npm-alert {
+            background: #fee2e2; border: 1px solid #ef4444; border-radius: 12px; padding: 16px;
+            margin: 20px 0; text-align: left; color: #991b1b; display: none;
+        }
+        .npm-alert strong { display: block; margin-bottom: 8px; font-size: 1.05rem; }
+        .npm-alert p { font-size: 0.9rem; margin-bottom: 12px; color: #7f1d1d; }
+        .npm-code { background: #1f2937; color: #10b981; padding: 8px 12px; border-radius: 6px; font-family: monospace; display: inline-block; font-weight: bold; border: 1px solid #374151; }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="upload-container">
+        
+        <div id="stepSelect" class="step-view active">
+            <h1>Structurez votre projet</h1>
+            <p class="subtitle">Glissez-déposez vos fichiers ou dossiers HTML</p>
+            
+            <div class="drop-zone" id="dropZone">
+                <div class="icon">📁</div>
+                <p>Déposez vos éléments ici</p>
+                <div class="btn-group">
+                    <button type="button" class="btn" onclick="document.getElementById('fileInput').click()">📄 Fichiers</button>
+                    <button type="button" class="btn" onclick="document.getElementById('folderInput').click()">📂 Dossier</button>
+                </div>
+            </div>
+            <input type="file" id="fileInput" multiple style="display:none;">
+            <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
+
+            <div id="configContainer" style="display: none;">
+                <div class="config-section">
+                    <label>Dossier de destination :</label>
+                    <div class="input-path-wrapper">
+                        <span style="color: #64748b;">resources/views/</span>
+                        <input type="text" id="subFolderInput" class="input-path" placeholder="Ex: pages/blog">
+                    </div>
+                </div>
+                <div class="file-list-container">
+                    <div id="fileCount" style="font-size: 0.8rem; margin-bottom: 6px;">0 fichier</div>
+                    <ul id="fileList"></ul>
+                </div>
+                <button type="button" id="processBtn" class="btn btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">🚀 Lancer la conversion</button>
+            </div>
+        </div>
+
+        <div id="stepLoading" class="step-view" style="text-align: center;">
+            <div style="font-size: 4rem; animation: spin 2s linear infinite;">⏳</div>
+            <h2>Conversion en cours...</h2>
+        </div>
+
+        <div id="stepSuccess" class="step-view" style="text-align: center;">
+            <div style="font-size: 4rem;">✅</div>
+            <h2>Importation Réussie !</h2>
+
+            <div id="npmAlertBox" class="npm-alert">
+                <strong>⚠️ Bibliothèques Javascript requises</strong>
+                <p>Vos pages originales utilisaient des librairies externes. Pour que vos animations fonctionnent sur Laravel, copiez/collez ceci dans votre terminal :</p>
+                <span id="npmCommand" class="npm-code"></span>
+            </div>
+
+            <div class="tree-container" id="treeContainer"></div>
+            <button type="button" class="btn" onclick="goToStep('stepSelect')">↩️ Importer d'autres fichiers</button>
+        </div>
+
+        <div id="stepError" class="step-view" style="text-align: center;">
+            <div style="font-size: 4rem;">❌</div>
+            <h2 id="errorMsg">Erreur</h2>
+            <button type="button" class="btn" onclick="goToStep('stepSelect')" style="margin-top: 15px;">↩️ Retour</button>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const folderInput = document.getElementById('folderInput');
+        const configContainer = document.getElementById('configContainer');
+        const fileList = document.getElementById('fileList');
+        const fileCount = document.getElementById('fileCount');
+        const processBtn = document.getElementById('processBtn');
+        const subFolderInput = document.getElementById('subFolderInput');
+        const errorMsg = document.getElementById('errorMsg');
+
+        let filesToUpload = [];
+
+        function goToStep(stepId) {
+            document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => document.body.addEventListener(e, p => { p.preventDefault(); p.stopPropagation(); }));
+        dropZone.addEventListener('drop', async (e) => {
+            const items = e.dataTransfer.items;
+            if (!items) return;
+            const promises = Array.from(items).map(item => traverseFileTree(item.webkitGetAsEntry(), ""));
+            const results = await Promise.all(promises);
+            filesToUpload = results.flat().filter(f => f && !f.name.startsWith('.'));
+            displayFiles();
+        });
+
+        function traverseFileTree(item, path) {
+            return new Promise((resolve) => {
+                if (!item) return resolve([]);
+                if (item.isFile) {
+                    item.file(file => resolve([{ name: file.name, path: path + file.name, fileObj: file }]));
+                } else if (item.isDirectory) {
+                    const dirReader = item.createReader();
+                    dirReader.readEntries(async entries => {
+                        const results = await Promise.all(entries.map(e => traverseFileTree(e, path + item.name + "/")));
+                        resolve(results.flat());
+                    });
+                }
+            });
+        }
+
+        fileInput.addEventListener('change', e => handleInput(e.target.files));
+        folderInput.addEventListener('change', e => handleInput(e.target.files, true));
+
+        function handleInput(files, isFolder) {
+            filesToUpload = Array.from(files).map(f => ({ name: f.name, path: isFolder ? f.webkitRelativePath : f.name, fileObj: f }));
+            displayFiles();
+        }
+
+        function displayFiles() {
+            configContainer.style.display = filesToUpload.length ? 'block' : 'none';
+            fileCount.textContent = `${filesToUpload.length} fichier(s) prêt(s)`;
+            fileList.innerHTML = filesToUpload.slice(0, 5).map(f => `<li class="file-item">🌐 ${f.path}</li>`).join('') + (filesToUpload.length > 5 ? '<li>...</li>' : '');
+        }
+
+        processBtn.addEventListener('click', async () => {
+            goToStep('stepLoading');
+            const formData = new FormData();
+            formData.append('sub_folder', subFolderInput.value.trim());
+            filesToUpload.forEach(f => formData.append('files[]', f.fileObj, f.path));
+
+            try {
+                // S'assure que le fetch tape sur le port défini par le Python
+                const response = await fetch('http://127.0.0.1:5000/api/convert', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.status === "success") {
+                    renderTree(data.tree);
+                    
+                    // GESTION DE L'ALERTE NPM DANS L'INTERFACE
+                    const npmAlertBox = document.getElementById('npmAlertBox');
+                    const npmCommand = document.getElementById('npmCommand');
+                    
+                    if (data.npm_libs_to_install && data.npm_libs_to_install.length > 0) {
+                        npmCommand.textContent = "npm install " + data.npm_libs_to_install.join(' ');
+                        npmAlertBox.style.display = 'block';
+                    } else {
+                        npmAlertBox.style.display = 'none';
+                    }
+
+                    goToStep('stepSuccess');
+                } else { throw new Error(data.message); }
+            } catch (err) {
+                errorMsg.textContent = "Erreur : " + err.message;
+                goToStep('stepError');
+            }
+        });
+
+        function renderTree(tree) {
+            const container = document.getElementById('treeContainer');
+            if (!container) return;
+            container.innerHTML = "";
+            const ul = document.createElement('ul');
+            tree.forEach(item => {
+                const li = document.createElement('li');
+                const name = (typeof item === 'object') ? item.name : item;
+                li.textContent = `📄 ${name}`;
+                ul.appendChild(li);
+            });
+            container.appendChild(ul);
+        }
+    </script>
+</body>
+</html>
