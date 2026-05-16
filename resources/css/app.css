@@ -1,0 +1,132 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* ============================================================
+   1. VARIABLES GLOBALES & RESET UNIFIÉ
+============================================================ */
+:root {
+  --dark: #0A0806;
+  --gold: #C9A84C;
+  --gold-dim: #8a6d2f;
+  --gold-light: #E8C97A;
+  --gold-bright: #FFD700;
+  --rouge: #9B2335;
+  --rouge-bright: #C41E3A;
+  --rouge-soft: rgba(139, 0, 0, 0.35);
+  --parchment: #F2E8D5;
+  --overlay: rgba(10, 8, 6, 0.94);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  width: 100%; min-height: 100vh;
+  background-color: var(--dark); color: var(--parchment);
+  font-family: 'EB Garamond', 'Segoe UI', serif;
+  overflow-x: hidden; position: relative;
+}
+
+/* ============================================================
+   2. ARRIÈRE-PLANS (ÉTOILES & GRAIN)
+============================================================ */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 128px;
+}
+body::after {
+  content: ''; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 900px; height: 900px; pointer-events: none; z-index: -1;
+  background: radial-gradient(ellipse, rgba(201,168,76,0.07) 0%, transparent 70%);
+}
+#star-canvas, #starsCanvas, #starfield { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+
+/* ============================================================
+   3. ANIMATIONS GLOBALES
+============================================================ */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulseGold { 0%, 100% { opacity: 0.5; text-shadow: none; } 50% { opacity: 1; text-shadow: 0 0 10px rgba(255,215,0,0.5); } }
+@keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+/* ============================================================
+   4. STRUCTURE DE BASE & WRAPPERS
+============================================================ */
+#app, .container, .main-container { position: relative; z-index: 10; max-width: 900px; margin: 0 auto; padding: 3rem 2rem; }
+.content-wrapper { position: relative; z-index: 10; max-width: 800px; margin: 100px auto 150px; padding: 0 20px; }
+.overlay { position: relative; z-index: 10; display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); }
+
+/* ============================================================
+   5. COMPOSANTS COMMUNS (Titres, Boutons, Séparateurs)
+============================================================ */
+.site-header, .header, #header { text-align: center; margin-bottom: 3rem; animation: fadeIn 2s ease forwards; }
+.site-title-small { font-family: 'Cinzel Decorative', serif; font-size: clamp(1.4rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: 0.15em; color: var(--gold); text-shadow: 0 0 30px rgba(201,168,76,0.25); margin-bottom: 0.3rem; }
+h1 { font-family: 'Cinzel Decorative', serif; font-size: clamp(2.5rem, 8vw, 6rem); color: var(--gold); letter-spacing: 0.15em; text-shadow: 0 0 40px rgba(201,168,76,0.4); margin-bottom: 0.5rem; }
+h2 { font-family: 'Cinzel Decorative', serif; font-size: clamp(1.3rem, 4vw, 2.5rem); color: var(--gold); letter-spacing: 0.15em; margin-bottom: 1rem; text-align: center; }
+
+.divider, .sep, .separateur { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 2rem auto; width: 100%; max-width: 200px; }
+.divider::before, .divider::after, .sep, .separateur { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, transparent, rgba(201,168,76,0.4), transparent); }
+
+.nav-btn, .btn-or, .m7-nav-btn, .m8-nav-btn {
+  font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.3em; color: var(--gold-dim); text-transform: uppercase;
+  background: none; border: 1px solid rgba(201,168,76,0.2); padding: 0.6rem 1.2rem; cursor: pointer; transition: all 0.3s ease;
+}
+.nav-btn:hover, .btn-or:hover, .m7-nav-btn.actif, .m8-nav-btn.actif { color: var(--gold); border-color: var(--gold); background: rgba(201,168,76,0.05); }
+
+/* ============================================================
+   6. MODULES SPÉCIFIQUES (Agenda, Elpis Sync, Construction)
+============================================================ */
+/* Formulaires & Inputs */
+.form-input, .form-textarea, .form-select, input[type="text"] {
+  width: 100%; background: rgba(242,232,213,0.04); border: 1px solid rgba(201,168,76,0.2);
+  color: var(--parchment); font-family: 'EB Garamond', serif; font-size: 1rem; padding: 0.75rem 1rem; outline: none; transition: border-color 0.3s;
+}
+.form-input:focus { border-color: var(--gold); }
+
+/* Cartes et Grilles */
+.grid-categories, #miroir, #m7-miroir, #m8-statut-zone { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.category-card, .scan-item, .evt-card { background: rgba(201,168,76,0.02); border: 1px solid rgba(201,168,76,0.15); padding: 1.2rem; transition: all 0.3s ease; }
+.category-card:hover { border-color: var(--gold); background: rgba(201,168,76,0.05); transform: translateY(-3px); }
+
+/* Barres de progression (Scans en escalier) */
+.progress-bar-outer, .scan-ligne { height: 2px; background: rgba(201,168,76,0.15); position: relative; overflow: hidden; margin-bottom: 1rem; }
+.progress-bar-inner, .scan-inner { height: 100%; width: 100%; background: linear-gradient(to right, transparent, var(--gold-bright), transparent); animation: scan 2.2s ease-in-out infinite; }
+
+/* ============================================================
+   7. SECTIONS UNIVERS & LORE
+============================================================ */
+.u-bloc, .u-tab { margin-bottom: 3rem; padding: 2rem 2.5rem; border-left: 2px solid var(--rouge-soft); position: relative; }
+.u-bloc::before, .u-tab::before { content: ''; position: absolute; left: -2px; top: 0; width: 2px; height: 50px; background: linear-gradient(to bottom, var(--rouge-bright), transparent); }
+.u-bloc p, .bloc-texte p { font-size: clamp(1.05rem, 2.2vw, 1.25rem); line-height: 1.9; color: rgba(242,232,213,0.85); margin-bottom: 1.2rem; }
+
+.latin, .u-lang.latin p { font-family: 'Cinzel', serif; font-size: 0.95rem; letter-spacing: 0.1em; color: rgba(201,168,76,0.6); font-style: italic; }
+.elpis-accroche { text-align: center; margin-bottom: 3rem; padding: 2.5rem 2rem; border: 1px solid rgba(201,168,76,0.18); background: rgba(201,168,76,0.03); }
+
+/* ============================================================
+   8. POPUPS & MODALES
+============================================================ */
+#popup-overlay, #popup-install, .modal-container {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay); z-index: 2000;
+  display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+}
+#popup-overlay.visible, #popup-install.visible { display: flex; }
+#popup-box, #install-box, .modal {
+  background: var(--dark); border: 1px solid var(--gold); max-width: 600px; width: 90%; padding: 3rem 2.5rem;
+  text-align: center; position: relative; box-shadow: 0 0 80px rgba(201,168,76,0.15); animation: fadeUp 0.4s ease forwards;
+}
+
+/* ============================================================
+   9. FOOTER
+============================================================ */
+.site-footer, #footer { text-align: center; padding-top: 4rem; border-top: 1px solid rgba(201,168,76,0.15); margin-top: auto; animation: fadeIn 4s ease forwards; }
+.footer-codex { font-family: 'Cinzel Decorative', serif; font-size: 1.4rem; color: var(--gold); letter-spacing: 0.2em; margin-bottom: 0.3rem; }
+.footer-latin { font-family: 'Cinzel', serif; font-size: 0.87rem; letter-spacing: 0.2em; color: rgba(201,168,76,0.4); margin-bottom: 0.3rem; }
