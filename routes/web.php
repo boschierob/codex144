@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('imported/index_site');
 });
 
 // Assure-toi que cette partie est bien présente
@@ -13,7 +13,7 @@ Route::get('/preview/{name}', function ($name) {
     }
 
     // Si elle n'existe pas, on redirige vers l'accueil (ou index_site)
-    return redirect()->route('home'); 
+    return redirect()->route('/imported/index_site'); 
 });
 
 // Ta route home (nommée pour que la redirection fonctionne)
